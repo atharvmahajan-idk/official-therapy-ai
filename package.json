@@ -19,9 +19,12 @@
   },
   "homepage": "https://github.com/atharvmahajan-idk/official-therapy-ai#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^16.6.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.1",
     "nodemon": "^3.1.10"
   }
 }
