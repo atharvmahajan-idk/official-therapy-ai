@@ -1,0 +1,27 @@
+{
+  "name": "official-therapy-ai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atharvmahajan-idk/official-therapy-ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/atharvmahajan-idk/official-therapy-ai/issues"
+  },
+  "homepage": "https://github.com/atharvmahajan-idk/official-therapy-ai#readme",
+  "dependencies": {
+    "dotenv": "^16.6.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
