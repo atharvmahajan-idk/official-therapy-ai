@@ -45,42 +45,78 @@ r.onend = () => {
     sendTranscriptToBackend();
 };
 
-async function sendTranscriptToBackend() {        time: new Date().toISOString()
-    if(finalTranscripts.length === 0){
-        finalTranscripts =  prompt("type here")
-    }
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-GB', {
-    hour:   '2-digit',
-    minute: '2-digit',
-    
-    });
-    
-    const data = {
-        transcript: finalTranscripts,
-        time: time
-    };
-
-    const resposne = await  fetch('/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    const responseData = await resposne.json();
-    if (responseData.success) {
-        console.log("Transcript sent successfully:", responseData);
-        let message =   responseData.message || "i am having issues right now ";
-        document.querySelector(".center-text").textContent = message; 
-        let base64Audio = responseData.audioData;   
-        if(base64Audio.length === 0) {
-            return
-        }else{
-            isAiSpeaking = true;
+async function sendTranscriptToBackend() {
+    try {
+        // Get user input if empty
+        if (!finalTranscripts || finalTranscripts.trim().length === 0) {
+            const userInput = prompt("Please type your message:");
+            if (!userInput) return; // Exit if user cancels
+            finalTranscripts = userInput.trim();
         }
-        finalTranscripts = ""; // Clear the transcript after sending
-    }
 
+        // Format time (HH:MM)
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Prepare request data
+        const requestData = {
+            transcript: finalTranscripts,
+            time: time
+        };
+
+        // Send to backend
+        const response = await fetch('/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Handle response
+        const responseData = await response.json();
+        
+        if (responseData.success) {
+            console.log("API Success:", responseData);
+            
+            // Update UI message
+            const message = responseData.message || "I'm having issues right now";
+            const centerText = document.querySelector(".center-text");
+            if (centerText) centerText.textContent = message;
+            
+            // Handle audio playback
+            const base64Audio = responseData.audioData;
+            if (base64Audio && base64Audio.length > 0) {
+                const audioSrc = `data:audio/wav;base64,${base64Audio}`;
+                console.log("Playing audio:", audioSrc);
+                
+                const audio = new Audio(audioSrc);
+                audio.onended = () => isAiSpeaking = false;
+                
+                await audio.play()
+                    .then(() => isAiSpeaking = true)
+                    .catch(err => {
+                        console.error("Playback failed:", err);
+                        isAiSpeaking = false;
+                    });
+            } else {
+                console.warn("No audio received");
+                isAiSpeaking = false;
+            }
+        } else {
+            console.error("API Error:", responseData);
+            alert(responseData.message || "Request failed");
+        }
+
+    } catch (error) {
+        console.error("Network Error:", error);
+        alert("Failed to connect to server");
+    } finally {
+        finalTranscripts = ""; // Always clear transcript
+    }
 }
 

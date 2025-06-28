@@ -3,6 +3,7 @@ import { murfFunction } from "../apis/murf.api.js";
 import { checkUser } from "../utils/checkUser.utils.js";
 import { userMap, activeUsers } from "../utils/maps.utils.js";
 import {RedisClient} from "../config/redis.config.js"; // Assuming you have this setup
+import { geminaVoiceModelFuction } from "../apis/geminiVoiceModel.js";
 
 async function chatController(req, res, next) {
     try {
@@ -53,6 +54,7 @@ async function chatController(req, res, next) {
 
             // Fallback to secondary model if primary fails
             if (!geminiResponse.success) {
+                response.message = "i am having issues right now,"
                 geminiResponse = await geminiFunction(
                     email,
                     username,
@@ -84,6 +86,12 @@ async function chatController(req, res, next) {
                     }
                 }
                 console.log(userMap.get(email));
+
+                // if(!audioResponse.success) {
+                //     console.error("Gemina voice model function failed:", audioResponse.message);
+                // }
+
+                
                 // Generate audio response
                 // const murfResponse = await murfFunction(response.message);
                 // if (murfResponse?.audioData) {
@@ -93,9 +101,12 @@ async function chatController(req, res, next) {
 
         }
 
-        console.log("Final response:", response.message);
-        return res.status(200).json(response);
-
+        let audioResponse = await geminaVoiceModelFuction(response.message);
+        // console.log("Gemina Voice Response:", audioResponse);
+        if(audioResponse.success) {
+            response.audioData = audioResponse.audioFile;
+        }
+        res.status(200).json(response)
     } catch (error) {
         console.error("Chat controller error:", error);
         return res.status(500).json({

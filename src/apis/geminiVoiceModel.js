@@ -81,6 +81,8 @@ async function geminaVoiceModelFuction(response){
         res.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         const audioBuffer = Buffer.from(data, "base64");
         const buffer = await convertIntoWav(audioBuffer)
+        console.log("Audio buffer converted to WAV format successfully");
+
         return {
             success: true,
             audioFile: buffer.toString('base64')|| "not available",
@@ -99,3 +101,4 @@ async function geminaVoiceModelFuction(response){
     
     
 }
+export {geminaVoiceModelFuction}
