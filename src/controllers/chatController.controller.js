@@ -75,18 +75,22 @@ async function chatController(req, res, next) {
                         console.log(`Successfully appended summary to Redis list for user ${email}`);
                 
                         console.log("Successfully stored summary in Redis");
+                        let user = userMap.get(email);
+                        user.totalMess += 1;
+                        user.last4Mess += 1;
                     } catch (redisError) {
                         console.error("Redis storage error:", redisError);
                         // Continue with response even if Redis fails
                     }
                 }
-
+                console.log(userMap.get(email));
                 // Generate audio response
                 // const murfResponse = await murfFunction(response.message);
                 // if (murfResponse?.audioData) {
                 //     response.audioData = murfResponse.audioData;
                 // }
             }
+
         }
 
         console.log("Final response:", response.message);
