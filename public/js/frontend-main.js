@@ -46,7 +46,9 @@ r.onend = () => {
 };
 
 async function sendTranscriptToBackend() {        time: new Date().toISOString()
-
+    if(finalTranscripts.length === 0){
+        finalTranscripts =  prompt("type here")
+    }
     const now = new Date();
     const time = now.toLocaleTimeString('en-GB', {
     hour:   '2-digit',

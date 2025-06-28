@@ -1,8 +1,10 @@
 import { geminiFunction } from "../apis/genima.api.js";
+import { murfFunction } from "../apis/murf.api.js";
 import { checkUser } from "../utils/checkUser.utils.js";
 import { userMap, activeUsers } from "../utils/maps.utils.js";
 
 async function chatController(req, res, next) {
+    var geminiRes = false
     try {
         console.log("============= Chat Controller =============");
 
@@ -28,19 +30,37 @@ async function chatController(req, res, next) {
         }
 
         // Call the geminaFunction to process the transcript
-        const geminaResponse = await geminiFunction(
-            email,
-            username,
-            transcript,
-            "gemini-2.5-flash-lite-preview-06-17",
-            false,
-            false
-        );
+        if(!transcript || transcript.trim() === "") {
+            var geminaResponse = await geminiFunction(
+                email,
+                username,
+                transcript,
+                "gemini-2.5-flash-lite-preview-06-17",
+                false,
+                false
+            );
+            if(!geminaResponse.success){
+                var geminaResponse = await geminiFunction(
+                    email,
+                    username,
+                    transcript,
+                    "gemini-2.0-flash",
+                    false,
+                    false
+                );
+                if(geminaResponse.success){
+                    geminiRes  = true
+                    message = geminaResponse.message             
 
-        const message = geminaResponse.message 
+                }
+            }
+
+        }
+
 
         console.log("Gemina response:", message);
-
+        const murfAIresponse = await murfFunction(message)
+        // console.log()
         res.status(200).json({
             success: true,
             message,
