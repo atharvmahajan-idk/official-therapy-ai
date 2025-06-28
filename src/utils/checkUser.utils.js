@@ -1,4 +1,5 @@
 import { userMap, activeUsers } from "./maps.utils.js";
+import { randomUUID } from "crypto";
 
 async function checkUser(email) {
   if (!userMap.has(email)) {
