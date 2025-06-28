@@ -10,6 +10,8 @@ import { authMiddleware } from "./middlewares/auth.middleware.js";
 import { RedisClient } from "./config/redis.config.js";
 import { userMap , activeUsers } from "./utils/maps.utils.js";
 import { randomUUID } from "crypto";
+import { chatController } from "./controllers/chatController.controller.js";
+import { checkUser } from "./utils/checkUser.utils.js";
 const app = express();
 
 dotenv.config();
@@ -39,25 +41,7 @@ app.get('/', authMiddleware , (req, res) => {
     if(!userMap.has(email) || !activeUsers.has(email)) {
         console.log("==============creating user in maps===============");
         // console.log("User not found in maps, adding user");
-        if(!userMap.has(email)) {
-            const userData = { 
-                email: email,
-                sessionID:randomUUID(),
-                totalMess:0,
-                last4Mess:0,
-                messPushTovecDB:0,
-                graph:[]
-             }
-            userMap.set(email, userData);
-            console.log("User added to userMap:", userData);
-        }
-        if(!activeUsers.has(email)) {
-            const userData = { 
-                lastactive:  Date.now(),
-             }
-            activeUsers.set(email, userData);
-            console.log("User added to activeUsers:", userData);
-        }
+        checkUser(email)
 
         // userMap.set(email, { email });
         // activeUsers.set(email, { email });
@@ -69,6 +53,7 @@ app.get('/', authMiddleware , (req, res) => {
     res.render('index');
 });
 
+app.post("/" ,  authMiddleware , chatController )
 
 app.use((err, req, res, next) => {
     console.log("Global error handler triggered");
