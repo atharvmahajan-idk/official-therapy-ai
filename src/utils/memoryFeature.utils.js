@@ -1,140 +1,165 @@
-// import { appendGenralLogs } from "./genralLogs.util.js";
 import { GoogleGenAI } from "@google/genai";
 import { client } from "../config/qdrant.config.js";
 import { RedisClient } from "../config/redis.config.js";
-import path from "path";
-import fs from "fs/promises";
 import { randomUUID } from "crypto";
-import { userMap } from "../utils/maps.utils.js";
 
-async function GetEmbedings(messagesList, email, session) {
-    // memoryFeatureLogs(`\n${messagesList}`)
-    let list = messagesList.map((Obj) => {
-      console.log(Obj);
-      let obj = Obj;
-      console.log(obj)
-      let string = `
-              User Summary: ${obj.user_prompt}
-              AI Summary: ${obj.ai_response}
-              Mood Score: ${obj.moodScore}
-              Events: ${obj.events.length ? obj.events.join(", ") : "None"}
-              Emotional State: ${
-                obj.emotinol_state.length ? obj.emotinol_state.join(", ") : "None"
-              }
-          `.trim();
-      // return
-      return [
-        `User Summary: ${obj.user_prompt}`,
-        `AI Summary: ${obj.ai_response}`,
-        `Mood Score: ${obj.moodScore}`,
-        `Events: ${obj.events.length ? obj.events.join(", ") : "None"}`,
-        `Emotional State: ${
-          obj.emotinol_state.length ? obj.emotinol_state.join(", ") : "None"
-        }`,
-      ].join("\n"); // clean join without spaces or indentation
-    });
-    // console.log(list)
-    list.forEach((element) => {
-      console.log("\n", element);
-    });
-    const API_KEY = process.env.GEMINA_API_KEY;
-    // messagesList =  messagesList.map(obj=>{
-    //     let string = `
-    //         user_promptSummarie: ${obj.}
-    //     `
-    // })
+async function GetEmbeddings(messagesList, email, session) {
+    if (!messagesList || !Array.isArray(messagesList)) {
+        throw new Error("Invalid messages list provided");
+    }
+
     try {
-      const ai = new GoogleGenAI({ apiKey: API_KEY });
-      const response = await ai.models.embedContent({
-        model: "gemini-embedding-exp-03-07",
-        contents: list,
-      });
-      let embeddings = response.embeddings;
-      const qdrantPoints = messagesList.map((obj, idx) => ({
-        id: randomUUID(),
-        vector: embeddings[idx].values, // from Gemini
-        payload: {
-          user_prompt: obj.user_prompt,
-          ai_response: obj.ai_response,
-          moodScore: obj.moodScore,
-          events: obj.events,
-          emotional_state: obj.emotinol_state,
-          email: email,
-          session: session,
-        },
-      }));
-  
-      return qdrantPoints;
+        // Prepare text for embedding
+        const textList = messagesList.map(obj => {
+            if (!obj || typeof obj !== 'object') {
+                console.warn("Invalid message object:", obj);
+                return "";
+            }
+            
+            return [
+                `User Summary: ${obj.user_prompt || "No user prompt"}`,
+                `AI Summary: ${obj.ai_response || "No AI response"}`,
+                `Mood Score: ${obj.moodScore || "Not rated"}`,
+                `Events: ${obj.events?.length ? obj.events.join(", ") : "None"}`,
+                `Emotional State: ${obj.emotinol_state?.length ? obj.emotinol_state.join(", ") : "None"}`
+            ].join("\n");
+        }).filter(text => text.trim());
+
+        if (!textList.length) {
+            throw new Error("No valid text content for embedding");
+        }
+
+        // Generate embeddings
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINA_API_KEY });
+        const response = await ai.models.embedContent({
+            model: "gemini-embedding-exp-03-07",
+            contents: textList,
+        });
+
+        if (!response.embeddings || !response.embeddings.length) {
+            throw new Error("No embeddings generated");
+        }
+
+        // Prepare Qdrant points
+        return messagesList.map((obj, idx) => ({
+            id: randomUUID(),
+            vector: response.embeddings[idx]?.values || [],
+            payload: {
+                user_prompt: obj.user_prompt,
+                ai_response: obj.ai_response,
+                moodScore: obj.moodScore,
+                events: obj.events || [],
+                emotional_state: obj.emotinol_state || [],
+                email: email,
+                session: session,
+                timestamp: new Date().toISOString()
+            }
+        }));
+
     } catch (error) {
-      const str = error.message;
-  
-      const match = str.match(/{.*}/s); // `s` flag allows dot to match newline characters too (if any)
-  
-      if (match) {
-        const jsonObj = JSON.parse(match[0]);
-        console.log(jsonObj);
-      } else {
-        console.log("No JSON object found.");
-      }
+        console.error("Embedding generation failed:", error);
+        
+        // Enhanced error parsing
+        try {
+            const errorStr = error.message || JSON.stringify(error);
+            const jsonMatch = errorStr.match(/{[\s\S]*}/);
+            if (jsonMatch) {
+                const errorObj = JSON.parse(jsonMatch[0]);
+                console.error("Detailed error:", errorObj);
+            }
+        } catch (parseError) {
+            console.error("Error parsing error message:", parseError);
+        }
+        
+        throw error;
     }
 }
 
-async function getUserLastTenMess(email, messLength = -4) {
-  try {
-    const messagesList = await RedisClient.lRange(
-      `users:${email}`,
-      messLength,
-      -1
-    );
-    if (messagesList.length === 0) {
-      console.log("the list length is empty");
-      appendLog("list length is empty", "getUserLastTenMess");
-      return {
-        success: false,
-        messagesList,
-      };
-    } else if (messagesList.length > 0) {
-      console.log("list 200");
 
-      return {
-        success: true,
-        messagesList,
-      };
+async function getUserMessages(email, messLength = -4) {
+    if (!email) {
+        return { success: false, messagesList: [] };
     }
-  } catch (error) {
-    console.log(error.message);
-    return {
-      success: false,
-    };
-  }
+
+    try {
+        const messagesList = await RedisClient.lRange(
+            `user:${email}`,
+            messLength,
+            -1
+        );
+
+        return {
+            success: messagesList.length > 0,
+            messagesList: messagesList.filter(msg => msg).map(msg => {
+                try {
+                    return JSON.parse(msg);
+                } catch (e) {
+                    console.error("Failed to parse message:", msg);
+                    return null;
+                }
+            }).filter(msg => msg)
+        };
+    } catch (error) {
+        console.error("Redis retrieval failed:", error);
+        return { success: false, messagesList: [] };
+    }
 }
 
-async function memoryFeature(email, session, messLength = -4, redis = true) {
-  const { success, messagesList } = await getUserLastTenMess(email, messLength);
-  if (success) {
-    let list = messagesList.map((obj) => {
-      try {
-        const parseObj = JSON.parse(obj);
-        // console.log(parseObj)
-        return parseObj.summaries;
-      } catch (error) {
-        memoryFeatureLogs(error.message);
-      }
-    });
-    const finalList = await GetEmbedings(list, email, session);
-    console.log(finalList);
-    let collectionName = "therapy-AI";
-    await client.upsert(collectionName, {
-      points: finalList, // each: { id, vector, payload }
-      wait: true,
-    });
-    console.log("vector success fully upserted");
-    const user = userMap.get(email);
-    console.log("here is the users before and after");
-    console.log(user);
-    user.vectorPushes++;
-    console.log(user);
-    return true;
-  }
+
+async function memoryFeature(email, session, messLength = -4) {
+    if (!email || !session) {
+        console.error("Missing required parameters");
+        return false;
+    }
+
+    try {
+        const { success, messagesList } = await getUserMessages(email, messLength);
+        
+        if (!success || !messagesList.length) {
+            console.log("No valid messages found for user:", email);
+            return false;
+        }
+
+        // Extract summaries and filter invalid entries
+        const summaries = messagesList
+            .map(msg => msg?.summaries)
+            .filter(summary => summary && typeof summary === 'object');
+
+        if (!summaries.length) {
+            console.log("No valid summaries found");
+            return false;
+        }
+
+        const qdrantPoints = await GetEmbeddings(summaries, email, session);
+        
+        if (!qdrantPoints.length) {
+            console.log("No valid embeddings generated");
+            return false;
+        }
+
+        // Store in Qdrant
+        await client.upsert("therapy-AI", {
+            points: qdrantPoints,
+            wait: true
+        });
+
+        console.log("Vectors successfully upserted");
+
+        // Update user stats
+        const user = userMap.get(email);
+        if (user) {
+            user.vectorPushes = (user.vectorPushes || 0) + 1;
+            console.log("Updated user vector pushes:", user.vectorPushes);
+        } else {
+            console.warn("User not found in userMap:", email);
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error("Memory feature failed:", error);
+        return false;
+    }
 }
+
 export { memoryFeature };

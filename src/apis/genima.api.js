@@ -1,29 +1,54 @@
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs/promises";
 import path from "path";
-
+import { RedisClient } from "../config/redis.config.js";
 // Helper function to create the system prompt
-async function createSystemPrompt(email, username) {
-  console.log("====== Setting up Gemini ======");
-  
-  // Path to the prompt file
-  const promptPath = path.resolve("src/prompts", "systemPrompt.txt");
-  console.log("Using prompt file at:", promptPath);
 
-  // Read the base prompt from file
-  let basePrompt = await fs.readFile(promptPath, "utf-8");
-
-  // Add user details to the prompt
-  const fullPrompt = `
-    User: ${username}
-    Email: ${email}
-
-    ${basePrompt}
-  `.trim();
-
-  console.log("Final system prompt ready");
-  return fullPrompt;
+async function getLastFourMessages(email) {
+  try {
+      // Get last 4 messages from Redis
+      const messages = await RedisClient.lRange(`user:${email}`, -4, -1);
+      
+      // Parse messages and filter out invalid ones
+      const validMessages = [];
+      for (const msg of messages) {
+          try {
+              validMessages.push(JSON.parse(msg));
+          } catch {
+              console.log("Skipping invalid message format");
+          }
+      }
+      
+      return validMessages;
+  } catch (error) {
+      console.log("Error getting messages:", error.message);
+      return [];
+  }
 }
+
+
+async function createSystemPrompt(email, username) {
+  try {
+      // Read prompt template
+      const promptPath = path.resolve("src/prompts", "systemPrompt.txt");
+      const basePrompt = await fs.readFile(promptPath, "utf-8");
+      
+      // Combine with user info
+      return `
+User: ${username}
+Email: ${email}
+
+${basePrompt}
+      `.trim();
+      
+  } catch (error) {
+      console.log("Error creating prompt:", error.message);
+      // Fallback prompt
+      return `User: ${username}\nEmail: ${email}\n\nPlease respond helpfully.`;
+  }
+}
+
+
 
 // Main Gemini function
 async function geminiFunction(email, username, transcript, model, isJournal = false, isSummary = false) {
