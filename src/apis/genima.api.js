@@ -2,44 +2,46 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "fs/promises";
 import path from "path";
 
-async function generateSystemPrompt(email, username) {
-    console.log("====== gemini func======")
-  const promptFilePath = path.resolve("src/prompts", "systemPrompt.txt");
-  console.log("Reading from:", promptFilePath);
+// Helper function to create the system prompt
+async function createSystemPrompt(email, username) {
+  console.log("====== Setting up Gemini ======");
+  
+  // Path to the prompt file
+  const promptPath = path.resolve("src/prompts", "systemPrompt.txt");
+  console.log("Using prompt file at:", promptPath);
 
-  let systemPrompt = await fs.readFile(promptFilePath, "utf-8");
+  // Read the base prompt from file
+  let basePrompt = await fs.readFile(promptPath, "utf-8");
 
-  systemPrompt = `
-User: ${username}
-Email: ${email}
+  // Add user details to the prompt
+  const fullPrompt = `
+    User: ${username}
+    Email: ${email}
 
-${systemPrompt}
+    ${basePrompt}
   `.trim();
 
-  console.log("System prompt generated:", systemPrompt);
-  return systemPrompt;
+  console.log("Final system prompt ready");
+  return fullPrompt;
 }
 
-async function geminiFunction(
-  email,
-  username,
-  transcript,
-  model, 
-  isJournal = false,
-  isSummary = false
-) {
-  console.log("======================Genima function======================");
+// Main Gemini function
+async function geminiFunction(email, username, transcript, model, isJournal = false, isSummary = false) {
+  console.log("====== Running Gemini Function ======");
+  console.log(`Model: ${model}, Journal: ${isJournal}, Summary: ${isSummary}`);
 
+  // Only generate system prompt for regular chats
   let systemPrompt = "";
-
   if (!isJournal && !isSummary) {
-    systemPrompt = await generateSystemPrompt(email, username);
+    systemPrompt = await createSystemPrompt(email, username);
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINA_API_KEY });
+  // Initialize Gemini
+  const genAI = new GoogleGenAI({ apiKey: process.env.GEMINA_API_KEY });
 
   try {
-    var response = await ai.models.generateContent({
+    // Send request to Gemini
+    const geminiResponse = await genAI.models.generateContent({
       model: model,
       contents: transcript,
       config: {
@@ -47,32 +49,38 @@ async function geminiFunction(
       },
     });
 
-    const res = response.text;
-    const match = res.match(/\{[\s\S]*\}/);
-    if (match) {
+    const responseText = geminiResponse.text;
+    console.log("Raw Gemini response:", responseText);
+
+    // Try to extract JSON if present
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
       try {
-        // console.log("match: ", match);
-        response = JSON.parse(match[0]);
-      } catch (error) {
-        console.error("Log Error:", error.message); // Replace with actual logging function or import it
+        const parsedResponse = JSON.parse(jsonMatch[0]);
+        console.log("Parsed JSON response:", parsedResponse);
         return {
-          success: false,
-          message: error.messaage,
+          success: true,
+          message: parsedResponse,
+          summaries: parsedResponse,
         };
+      } catch (parseError) {
+        console.log("Couldn't parse JSON, using raw response");
+        // If parsing fails, continue with raw response
       }
     }
-    console.log(match)
-    console.log("Gemini response:", res);
+
+    // Return successful response
     return {
       success: true,
-      message: res,
-      summaries: res,
+      message: responseText.response,
+      summaries: responseText.summaries,
     };
+
   } catch (error) {
-    console.error("Error in Gemini Function:", error.message);
+    console.log("Gemini error occurred:", error.message);
     return {
       success: false,
-      message: "I am having issues right now",
+      message: "I'm having some trouble right now. Please try again later.",
       summaries: false,
     };
   }
