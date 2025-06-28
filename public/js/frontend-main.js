@@ -1,127 +1,142 @@
-const orb = document.querySelector(".spline_orb_container")
-const sendBtn = document.querySelector(".send-btn")
-console.log(orb)
-var isAiSpeaking = false
-var state = "stop"
-var r = new webkitSpeechRecognition();
-var finalTranscripts = ""
-if(!r){
-    console.log("speech recog api not found")
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const sendBtn = document.querySelector(".send-btn");
+  sendBtn.addEventListener("click", async () => {
+    console.log("Send button clicked");
+    const inp = document.querySelector(".chat-input").value;
+    const response = await fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({prompt:true ,  transcript: inp}),
+      });
 
-r.continuous = true;
-r.interimResults = true;
-r.lang = "en-US";
+      // Handle response
+      const responseData = await response.json();
+    alert(inp);
+  });
+  const orb = document.querySelector(".spline_orb_container");
 
-console.log(r)
+  console.log(orb);
+  var isAiSpeaking = false;
+  var state = "stop";
+  var r = new webkitSpeechRecognition();
+  var finalTranscripts = "";
+  if (!r) {
+    console.log("speech recog api not found");
+  }
 
-orb.addEventListener("click" , ()=>{
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = "en-US";
+
+  console.log(r);
+
+  orb.addEventListener("click", () => {
     // alert("button clicked")
-    if(state === "stop"){
-        state = "start"
-        // alert(state)
-        r.start()
-    }else if(state === "start"){
-        state = "stop"
-        r.stop()
+    if (state === "stop") {
+      state = "start";
+      // alert(state)
+      r.start();
+    } else if (state === "start") {
+      state = "stop";
+      r.stop();
     }
-})
+  });
 
-r.onresult = function(event){
+  r.onresult = function (event) {
     var interimTranscripts = "";
-    for(var i=event.resultIndex; i<event.results.length; i++){
-        var transcript = event.results[i][0].transcript;
-        transcript.replace("\n", "<br>");
-        if(event.results[i].isFinal){
-            finalTranscripts += transcript;
-        }
-        else{
-            interimTranscripts += transcript;
-        }
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      var transcript = event.results[i][0].transcript;
+      transcript.replace("\n", "<br>");
+      if (event.results[i].isFinal) {
+        finalTranscripts += transcript;
+      } else {
+        interimTranscripts += transcript;
+      }
     }
-};
+  };
 
-r.onend = () => {
+  r.onend = () => {
     console.log(finalTranscripts);
     sendTranscriptToBackend();
-};
+  };
 
-async function sendTranscriptToBackend() {
+  async function sendTranscriptToBackend() {
     try {
-        // Get user input if empty
-        if (!finalTranscripts || finalTranscripts.trim().length === 0) {
-            const userInput = prompt("Please type your message:");
-            if (!userInput) return; // Exit if user cancels
-            finalTranscripts = userInput.trim();
-        }
+      // Get user input if empty
+      if (!finalTranscripts || finalTranscripts.trim().length === 0) {
+        const userInput = prompt("Please type your message:");
+        if (!userInput) return; // Exit if user cancels
+        finalTranscripts = userInput.trim();
+      }
 
-        // Format time (HH:MM)
-        const now = new Date();
-        const time = now.toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+      // Format time (HH:MM)
+      const now = new Date();
+      const time = now.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
-        // Prepare request data
-        const requestData = {
-            transcript: finalTranscripts,
-            time: time
-        };
+      // Prepare request data
+      const requestData = {
+        transcript: finalTranscripts,
+        time: time,
+      };
 
-        // Send to backend
-        const response = await fetch('/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        });
+      // Send to backend
+      const response = await fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestData),
+      });
 
-        // Handle response
-        const responseData = await response.json();
-        
-        if (responseData.success) {
-            console.log("API Success:", responseData);
-            
-            // Update UI message
-            const message = responseData.message || "I'm having issues right now";
-            const centerText = document.querySelector(".center-text");
-            if (centerText) centerText.textContent = message;
-            
-            // Handle audio playback
-            const base64Audio = responseData.audioData;
-            if (base64Audio && base64Audio.length > 0) {
-                const audioSrc = `data:audio/wav;base64,${base64Audio}`;
-                console.log("Playing audio:", audioSrc);
-                
-                const audio = new Audio(audioSrc);
-                audio.onended = () => isAiSpeaking = false;
-                
-                await audio.play()
-                    .then(() => isAiSpeaking = true)
-                    .catch(err => {
-                        console.error("Playback failed:", err);
-                        isAiSpeaking = false;
-                    });
-            } else {
-                console.warn("No audio received");
-                isAiSpeaking = false;
-            }
+      // Handle response
+      const responseData = await response.json();
+
+      if (responseData.success) {
+        console.log("API Success:", responseData);
+
+        // Update UI message
+        const message = responseData.message || "I'm having issues right now";
+        const centerText = document.querySelector(".center-text");
+        if (centerText) centerText.textContent = message;
+
+        // Handle audio playback
+        const base64Audio = responseData.audioData;
+        if (base64Audio && base64Audio.length > 0) {
+          const audioSrc = `data:audio/wav;base64,${base64Audio}`;
+          console.log("Playing audio:", audioSrc);
+
+          const audio = new Audio(audioSrc);
+          audio.onended = () => (isAiSpeaking = false);
+
+          await audio
+            .play()
+            .then(() => (isAiSpeaking = true))
+            .catch((err) => {
+              console.error("Playback failed:", err);
+              isAiSpeaking = false;
+            });
         } else {
-            console.error("API Error:", responseData);
-            alert(responseData.message || "Request failed");
+          console.warn("No audio received");
+          isAiSpeaking = false;
         }
-
+      } else {
+        console.error("API Error:", responseData);
+        alert(responseData.message || "Request failed");
+      }
     } catch (error) {
-        console.error("Network Error:", error);
-        alert("Failed to connect to server");
+      console.error("Network Error:", error);
+      alert("Failed to connect to server");
     } finally {
-        finalTranscripts = ""; // Always clear transcript
+      finalTranscripts = ""; // Always clear transcript
     }
-}
+  }
 
-sendBtn.addEventListener("click", async () => {
-    const inp = document.querySelector(".chat-input").value
 
-})
+});
