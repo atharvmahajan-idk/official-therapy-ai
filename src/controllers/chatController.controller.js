@@ -2,6 +2,7 @@ import { geminiFunction } from "../apis/genima.api.js";
 import { murfFunction } from "../apis/murf.api.js";
 import { checkUser } from "../utils/checkUser.utils.js";
 import { userMap, activeUsers } from "../utils/maps.utils.js";
+import {RedisClient} from "../config/redis.config.js"; // Assuming you have this setup
 
 async function chatController(req, res, next) {
     try {
@@ -10,6 +11,7 @@ async function chatController(req, res, next) {
         // Destructure request data
         const { email, username } = req;
         const { transcript, time } = req.body;
+        let geminiResponse_success = false;
         // Validate required fields
         if (!transcript || !time) {
             console.error("Missing required fields: transcript or time");
@@ -64,8 +66,26 @@ async function chatController(req, res, next) {
             // Update response if successful
             if (geminiResponse.success) {
                 response.message = geminiResponse.message;
+                console.log("Gemini response:", geminiResponse);
+                // Store summary in Redis if available
+                if (geminiResponse.summaries) {
+                    try {
+                        const redisKey = `user:${email}:summaries`;
+                        await RedisClient.rPush(redisKey, JSON.stringify(geminiResponse.summaries));
+                        console.log(`Successfully appended summary to Redis list for user ${email}`);
                 
+                        console.log("Successfully stored summary in Redis");
+                    } catch (redisError) {
+                        console.error("Redis storage error:", redisError);
+                        // Continue with response even if Redis fails
+                    }
+                }
 
+                // Generate audio response
+                // const murfResponse = await murfFunction(response.message);
+                // if (murfResponse?.audioData) {
+                //     response.audioData = murfResponse.audioData;
+                // }
             }
         }
 

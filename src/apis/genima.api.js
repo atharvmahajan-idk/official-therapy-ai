@@ -60,8 +60,8 @@ async function geminiFunction(email, username, transcript, model, isJournal = fa
         console.log("Parsed JSON response:", parsedResponse);
         return {
           success: true,
-          message: parsedResponse,
-          summaries: parsedResponse,
+          message: parsedResponse.response ,
+          summaries: parsedResponse.summaries,
         };
       } catch (parseError) {
         console.log("Couldn't parse JSON, using raw response");
