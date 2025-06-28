@@ -1,8 +1,55 @@
-import { userMap ,  activeUsers } from "../utils/maps.utils.js";
+import { geminiFunction } from "../apis/genima.api.js";
+import { checkUser } from "../utils/checkUser.utils.js";
+import { userMap, activeUsers } from "../utils/maps.utils.js";
 
-async function chatController(req, res ,  next) {
-    const email = req.email;
-    var message = "sorry i can't here anything";
+async function chatController(req, res, next) {
+    try {
+        console.log("============= Chat Controller =============");
+
+        const email = req.email;
+        const username = req.username;
+        const { transcript, time } = req.body;
+
+        if (!transcript || !time) {
+            console.error("Transcript or time is missing in the request body.");
+            return res.status(400).json({
+                success: false,
+                message: "Transcript and time are required.",
+            });
+        }
+
+        console.log("Transcript received:", transcript, time);
+
+        // Check if the user exists in the maps
+        if (!userMap.has(email) || !activeUsers.has(email)) {
+            console.log("============== Creating user in maps ==============");
+            checkUser(email);
+            console.log("User successfully added to maps.");
+        }
+
+        // Call the geminaFunction to process the transcript
+        const geminaResponse = await geminiFunction(
+            email,
+            username,
+            transcript,
+            "gemini-2.5-flash-lite-preview-06-17",
+            false,
+            false
+        );
+
+        const message = geminaResponse.message 
+
+        console.log("Gemina response:", message);
+
+        res.status(200).json({
+            success: true,
+            message,
+            audioData:"",
+        });
+    } catch (error) {
+        console.error("Error in chatController:", error.message);
+        next(error); // Pass the error to the global error handler
+    }
 }
 
 export { chatController };

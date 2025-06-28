@@ -39,9 +39,46 @@ r.onresult = function(event){
         }
     }
 };
-r.onend = ()=>{
-    // alert("recording ended")
-    console.log(finalTranscripts)
+
+r.onend = () => {
+    console.log(finalTranscripts);
+    sendTranscriptToBackend();
+};
+
+async function sendTranscriptToBackend() {        time: new Date().toISOString()
+
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-GB', {
+    hour:   '2-digit',
+    minute: '2-digit',
+    
+    });
+    
+    const data = {
+        transcript: finalTranscripts,
+        time: time
+    };
+
+    const resposne = await  fetch('/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    const responseData = await resposne.json();
+    if (responseData.success) {
+        console.log("Transcript sent successfully:", responseData);
+        let message =   responseData.message || "i am having issues right now ";
+        document.querySelector(".center-text").textContent = message; 
+        let base64Audio = responseData.audioData;   
+        if(base64Audio.length === 0) {
+            return
+        }else{
+            isAiSpeaking = true;
+        }
+        finalTranscripts = ""; // Clear the transcript after sending
+    }
+
 }
-// console.log(r)
 
