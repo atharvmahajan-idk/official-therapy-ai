@@ -1,4 +1,5 @@
 const orb = document.querySelector(".spline_orb_container")
+const sendBtn = document.querySelector(".send-btn")
 console.log(orb)
 var isAiSpeaking = false
 var state = "stop"
@@ -120,3 +121,7 @@ async function sendTranscriptToBackend() {
     }
 }
 
+sendBtn.addEventListener("click", async () => {
+    const inp = document.querySelector(".chat-input").value
+
+})
