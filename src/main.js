@@ -8,6 +8,8 @@ import { client } from "./config/qdrant.config.js";
 import cookieParser from "cookie-parser";
 import { authMiddleware } from "./middlewares/auth.middleware.js";
 import { RedisClient } from "./config/redis.config.js";
+import { userMap , activeUsers } from "./utils/maps.utils.js";
+import { randomUUID } from "crypto";
 const app = express();
 
 dotenv.config();
@@ -33,6 +35,37 @@ app.use('/auth' ,  loginSingUpRouter);
 // Define a basic route
 app.get('/', authMiddleware , (req, res) => {
     console.log("User authenticated:", req.email);
+    const email =  req.email
+    if(!userMap.has(email) || !activeUsers.has(email)) {
+        console.log("==============creating user in maps===============");
+        // console.log("User not found in maps, adding user");
+        if(!userMap.has(email)) {
+            const userData = { 
+                email: email,
+                sessionID:randomUUID(),
+                totalMess:0,
+                last4Mess:0,
+                messPushTovecDB:0,
+                graph:[]
+             }
+            userMap.set(email, userData);
+            console.log("User added to userMap:", userData);
+        }
+        if(!activeUsers.has(email)) {
+            const userData = { 
+                lastactive:  Date.now(),
+             }
+            activeUsers.set(email, userData);
+            console.log("User added to activeUsers:", userData);
+        }
+
+        // userMap.set(email, { email });
+        // activeUsers.set(email, { email });
+        console.log("user is successfully added to maps");
+    }
+    console.log("User maps:", userMap.get(email));
+    console.log("activeUser maps:", activeUsers.get(email));
+
     res.render('index');
 });
 
