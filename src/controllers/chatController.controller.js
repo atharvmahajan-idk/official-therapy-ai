@@ -112,6 +112,13 @@ async function chatController(req, res, next) {
         if(audioResponse.success) {
             response.audioData = audioResponse.audioFile;
         }
+        let userDetail = userMap.get(email);
+        if(userDetail.last4Mess >= 5){
+            console.log("=============calling memory function=============")
+            userDetail.last4Mess = 0
+            const session = userDetail.sessionID
+            memoryFeature(email ,  session)
+        }
         res.status(200).json(response)
     } catch (error) {
         console.error("Chat controller error:", error);
