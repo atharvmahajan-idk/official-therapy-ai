@@ -1,4 +1,5 @@
-const button = document.getElementById("spline-orb");
+const orb = document.querySelector(".spline_center_circle")
+console.log(orb)
 var isAiSpeaking = false
 var state = "stop"
 var r = new webkitSpeechRecognition();
@@ -13,7 +14,8 @@ r.lang = "en-US";
 
 console.log(r)
 
-button.addEventListener("click" , ()=>{
+orb.addEventListener("click" , ()=>{
+    // alert("button clicked")
     if(state === "stop"){
         state = "start"
         // alert(state)
@@ -38,7 +40,7 @@ r.onresult = function(event){
     }
 };
 r.onend = ()=>{
-    alert("recording ended")
+    // alert("recording ended")
     console.log(finalTranscripts)
 }
 // console.log(r)

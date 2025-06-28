@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div>
+        <input type="text" id="username-singUp" placeholder="Username">    
+        <input type="text" id="email-singUp" placeholder="Email">
+        <input type="password" id="password-singUp" placeholder="Password">
+        <button id="singUp">Sign Up</button>
+        
+    </div>
+    <div class="login">
+        <input type="text" id="username-login" placeholder="Username">    
+        <input type="text" id="email-login" placeholder="Email">
+        <input type="password" id="password-login" placeholder="Password">
+        <button id="login">Login</button>
+    </div>
+    <script>
+        document.getElementById('singUp').addEventListener('click', async () => {
+            const username = document.getElementById('username-singUp').value;
+            const email = document.getElementById('email-singUp').value;
+            const password = document.getElementById('password-singUp').value;
+
+            const data = { username, email, password };
+
+            try {
+                const response = await fetch('/auth/singup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log(result);
+                    alert('Sign up successful!');
+                } else {
+                    console.log(result)
+                    alert('Sign up failed!');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during sign up.');
+            }
+        });
+
+        document.getElementById('login').addEventListener('click', async () => {
+            // const username = document.getElementById('username-login').value;
+            const email = document.getElementById('email-login').value;
+            const password = document.getElementById('password-login').value;
+
+            const data = { email, password };
+
+            try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                console.log(result);
+                alert('Login successful!');
+                window.location.href = '/'; 
+            } else {
+                console.log(result);
+                alert(result.message || 'Login failed!');
+            }
+            } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during login.');
+            }
+        });
+    </script>
+</body>
+</html>

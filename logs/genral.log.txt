@@ -1,1 +1,0 @@
-2025-06-27T17:08:50.030Z - ERROR: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.; status:500 ; source:connectToMongo function in mongo.config.js
