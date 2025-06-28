@@ -11,16 +11,17 @@ async function chatController(req, res, next) {
 
         // Destructure request data
         const { email, username } = req;
-        const { transcript, time } = req.body;
+        const { transcript, time  ,  prompt} = req.body;
         let geminiResponse_success = false;
         // Validate required fields
-        if (!transcript || !time) {
+        if (!transcript) {
             console.error("Missing required fields: transcript or time");
             return res.status(400).json({
                 success: false,
                 message: "Both transcript and time are required.",
             });
         }
+
 
         console.log(`Processing request from ${username} (${email})`);
         console.log("Transcript:", transcript);
@@ -100,7 +101,12 @@ async function chatController(req, res, next) {
             }
 
         }
-
+        if(prompt){
+            return  res.status(200).json({
+                success: true,
+                message:response.message
+            })
+        }
         let audioResponse = await geminaVoiceModelFuction(response.message);
         // console.log("Gemina Voice Response:", audioResponse);
         if(audioResponse.success) {

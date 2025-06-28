@@ -1,21 +1,48 @@
 document.addEventListener("DOMContentLoaded", () => {
   const sendBtn = document.querySelector(".send-btn");
-  sendBtn.addEventListener("click", async () => {
-    console.log("Send button clicked");
-    const inp = document.querySelector(".chat-input").value;
-    const response = await fetch("/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({prompt:true ,  transcript: inp}),
-      });
+  function appendMessage(text, sender) {
+    let chatMessages = document.getElementById('chat-messages')
+    // const messageElement = document.createElement('div');
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', `${sender}-message`);
+    // Sanitize text before adding it to prevent XSS
+    messageElement.textContent = text; 
+    this.elements.chatMessages.appendChild(messageElement);
 
-      // Handle response
-      const responseData = await response.json();
-    alert(inp);
-  });
+    // Scroll to the latest message
+    this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+}
+//   sendBtn.addEventListener("click", async () => {
+//     alert("Send button clicked");
+//     const inp = document.querySelector(".chat-input").value;
+
+
+//     const response = await fetch("/", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Accept: "application/json",
+//         },
+//         body: JSON.stringify({prompt:true ,  transcript: inp}),
+//       });
+
+//       // Handle response
+//       const responseData = await response.json();
+//         if (responseData.success) {
+//             console.log("API Success:", responseData);
+//             // Update UI message
+//             // const centerText = document.querySelector(".center-text");
+//             // if (centerText) centerText.textContent = responseData.message || "I'm having issues right now";
+//             console.log("Response message:", responseData.message);
+//             let message = responseData.message
+
+//             appendMessage(message, "ai");   
+//         } else {
+//             console.error("API Error:", responseData);
+//             alert(responseData.message || "Request failed");
+//         }
+//     alert(inp);
+//   });
   const orb = document.querySelector(".spline_orb_container");
 
   console.log(orb);
