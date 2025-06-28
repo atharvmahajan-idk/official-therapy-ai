@@ -2,8 +2,46 @@ import {GoogleGenAI } from "@google/genai";
 import path from "path"
 import fs from "fs/promises"
 import { response } from "express";
+import wav from "wav";
+import { Stream } from "stream"
+import { write } from "fs";
 
-
+async function convertIntoWav(
+    pcmData,
+    channels = 1,
+    rate = 24000,
+    sampleWidth = 2
+) {
+  try {
+    const writer = new wav.Writer(
+      {
+        channels,
+        sampleRate: rate,
+        bitDepth: sampleWidth * 8,
+      }
+    )  
+    console.log("wav created")
+    var chunks = []
+  
+    const passTrough = new Stream.PassThrough()
+    passTrough.on('data' , data=>chunks.push(data))
+    writer.pipe(passTrough)
+    console.log("stream attached")
+    const done = new Promise(resolve => writer.on('finish' , resolve))
+    
+    writer.write(pcmData)
+    console.log("sending data to writer")
+    writer.end()
+    console.log("data sended")
+  
+    await done
+    // console.log("buffer: " , chunks)
+    return Buffer.concat(chunks)
+  } catch (error) {
+    console.log(error.messsage)
+    return true
+  }
+}
 
 async function geminaVoiceModelFuction(response){
     console.log(
@@ -16,7 +54,7 @@ async function geminaVoiceModelFuction(response){
         return {
             success: false,
             message: "Gemini API key is not set.",
-            audioBase64:""
+            audioFile:""
         };
     }
     try {
@@ -25,7 +63,7 @@ async function geminaVoiceModelFuction(response){
         const ai = new GoogleGenAI({ apiKey: API_KEY });
         console.log("Gemini AI initialized successfully");
         // Generate audio content
-        const response = await ai.models.generateContent({
+        const res = await ai.models.generateContent({
           model: "gemini-2.5-flash-preview-tts",
           contents: [{ parts: [{ text: response }] }],
           config: {
@@ -40,16 +78,22 @@ async function geminaVoiceModelFuction(response){
     
         console.log("Audio response generated successfully");
         const data =
-        response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        res.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         const audioBuffer = Buffer.from(data, "base64");
-        
+        const buffer = await convertIntoWav(audioBuffer)
+        return {
+            success: true,
+            audioFile: buffer.toString('base64')|| "not available",
+            message: response,
+            status: 200,
+          };
         
       } catch (error) {
         console.error("Voice model error:", error);
         return {
             success: false,
             message: "Error generating audio response",
-            audioBase64: ""
+            audioFile: ""
         };
       }
     
