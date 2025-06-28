@@ -1,4 +1,4 @@
-const orb = document.querySelector(".spline_center_circle")
+const orb = document.querySelector(".spline_orb_container")
 console.log(orb)
 var isAiSpeaking = false
 var state = "stop"
